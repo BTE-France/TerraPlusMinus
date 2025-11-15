@@ -8,10 +8,7 @@ import de.btegermany.terraplusminus.events.PlayerJoinEvent;
 import de.btegermany.terraplusminus.events.PlayerMoveEvent;
 import de.btegermany.terraplusminus.events.PluginMessageEvent;
 import de.btegermany.terraplusminus.gen.RealWorldGenerator;
-import de.btegermany.terraplusminus.utils.ConfigurationHelper;
-import de.btegermany.terraplusminus.utils.PluginConfigManipulator;
-import de.btegermany.terraplusminus.utils.LinkedWorld;
-import de.btegermany.terraplusminus.utils.PlayerHashMapManagement;
+import de.btegermany.terraplusminus.utils.*;
 import io.papermc.paper.command.brigadier.Commands;
 import io.papermc.paper.plugin.configuration.PluginMeta;
 import io.papermc.paper.plugin.lifecycle.event.LifecycleEventManager;
@@ -34,12 +31,15 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
-import java.nio.file.Path;
+import java.nio.file.*;
 import java.util.List;
 import java.util.Locale;
 
 import static java.lang.String.format;
 import static net.daporkchop.lib.common.util.PValidation.checkState;
+import static java.nio.file.Files.*;
+import static java.nio.file.LinkOption.NOFOLLOW_LINKS;
+import static java.nio.file.StandardCopyOption.COPY_ATTRIBUTES;
 
 public final class Terraplusminus extends JavaPlugin implements Listener {
     public static FileConfiguration config;
@@ -336,6 +336,25 @@ public final class Terraplusminus extends JavaPlugin implements Listener {
             this.getComponentLogger().warn("Failed to drop a Terra configuration file in plugin directory", e);
         }
         this.getComponentLogger().info("Created default Terra-- configuration at {}", droppedFile.getAbsolutePath());
+    }
+
+    private void checkForOldTerraplusplusDirectory() {
+        final Path terraplusplusDirectory = Path.of("./terraplusplus");
+        final Path pluginDirectory = this.getDataPath();
+        boolean oldDataExists = isDirectory(terraplusplusDirectory) && isRegularFile(terraplusplusDirectory.resolve("osm.json5"));
+        boolean newDataExist = isDirectory(pluginDirectory) && isRegularFile(pluginDirectory.resolve("osm.json5"));
+
+        if (oldDataExists && !newDataExist) {
+            try {
+                Files.walkFileTree(
+                        terraplusplusDirectory,
+                        new CopyDirectoryTreeVisitor(terraplusplusDirectory, pluginDirectory, this.getLogger(), false, COPY_ATTRIBUTES, NOFOLLOW_LINKS)
+                );
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+
+        }
     }
 
 }
